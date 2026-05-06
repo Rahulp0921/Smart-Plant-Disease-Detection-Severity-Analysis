@@ -1,0 +1,624 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1>🌿 Smart Plant Disease Detection & Severity Analysis</h1>
+
+<p class="subtitle">
+Upload or capture a leaf image to detect diseases,
+visualize infected regions, and estimate severity using AI.
+</p>
+
+<!-- =========================
+     TOGGLE BUTTONS
+========================= -->
+<div class="tab-container">
+    <div class="tab-slider" id="tab-slider"></div>
+
+    <button class="tab-btn active" id="upload-tab" onclick="switchTab('upload')">
+        📁 Upload Image
+    </button>
+
+    <button class="tab-btn" id="camera-tab" onclick="switchTab('camera')">
+        📷 Live Detection
+    </button>
+</div>
+
+<!-- =========================
+     UPLOAD SECTION
+========================= -->
+<div id="upload-section" class="card">
+
+    <h2>🌿 Upload Leaf Image</h2>
+
+    <form method="POST" enctype="multipart/form-data">
+        <label class="file-upload">
+            📁 Choose Image
+            <input type="file" id="file-input" name="file" accept="image/*" onchange="previewImage(event)" required>
+        </label>
+
+        <br><br>
+
+        <!-- PREVIEW -->
+        <img id="upload-preview" class="preview" style="display:none;">
+
+        <br><br>
+
+        <button type="submit" class="predict-btn" id="predict-btn" disabled>
+            🔍 Predict
+        </button>
+    </form>
+
+    {% if image_path %}
+        <img src="{{ image_path }}" id="result-image" class="preview" style="border:3px solid #4CAF50;">
+    {% endif %}
+
+    {% if prediction %}
+        <div class="result">
+
+            {% if "❌" in prediction %}
+                <h3 class="result-invalid">❌ Invalid Leaf Image</h3>
+            {% else %}
+
+                {% if "healthy" in prediction.lower() %}
+                    <h3 class="result-healthy">🌿 Healthy Leaf</h3>
+                {% else %}
+                    <h3 class="result-disease">🦠 Disease Detected</h3>
+                {% endif %}
+
+                <div class="result-header">
+                    <div class="result-title">
+
+                        {{ prediction }}
+
+                        <!-- ✅ REMOVE UNKNOWN BADGE -->
+                        {% if info and info.disease_type != "unknown" %}
+                        <span class="badge {{ info.disease_type }}">
+                            {{ info.label }}
+                        </span>
+                        {% endif %}
+
+                        {% if severity %}
+                            <span class="badge severity {{ severity|lower }}">
+                                {{ severity }}
+                            </span>
+                        {% endif %}
+
+                    </div>
+                </div>
+
+            {% endif %}
+
+            {% if confidence %}
+            <div class="confidence-box">
+
+                <p class="confidence-text">📊 Confidence: {{ confidence }}</p>
+
+                {% set conf_val = confidence.replace('%','') %}
+                <div class="confidence-bar">
+                    <div class="confidence-fill"
+                        style="width: {{ conf_val }}%;">
+                    </div>
+                </div>
+
+            </div>
+            {% endif %}
+
+            <!-- =========================
+                 🌿 / 🦠 INFO SECTION FIXED
+            ========================= -->
+
+            {% if info and info.type and info.type|lower == "healthy" %}
+
+                <div class="info-card healthy">
+                    <h3>🌿 Care Suggestions</h3>
+                    <ul>
+                        {% for s in info.suggestions or [] %}
+                        <li>✔ {{ s }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+
+            {% elif info and info.type and info.type|lower == "disease" %}
+
+                <div class="info-card disease">
+
+                    <h3>🩺 Symptoms</h3>
+                    <ul>
+                        {% for s in info.symptoms or [] %}
+                        <li>{{ s }}</li>
+                        {% endfor %}
+                    </ul>
+
+                    <h3>💊 Remedies</h3>
+                    <ul>
+                        {% for r in info.remedies or [] %}
+                        <li>✔ {{ r }}</li>
+                        {% endfor %}
+                    </ul>
+
+                </div>
+
+            {% endif %}
+
+        </div>
+    {% endif %}
+
+</div><!-- ✅ FIXED: Properly closed upload section -->
+
+<!-- =========================
+     CAMERA SECTION
+========================= -->
+<div id="camera-section" class="card" style="display:none; text-align:center;">
+
+    <h2>📷 Real-Time Plant Disease Detection</h2>
+
+    <p id="cam-status" style="color:#888;">Camera is OFF</p>
+
+    <div class="camera-wrapper">
+
+    <video id="video" class="camera-video preview" autoplay playsinline></video>
+
+    <div class="scan-line"></div>
+    <div class="camera-frame"></div>
+
+</div>
+
+    <br><br>
+
+    <button id="capture-btn" class="predict-btn capture-btn" onclick="capture()">
+        📸 Capture & Analyze
+    </button>
+
+    <button
+        class="switch-camera-btn"
+        onclick="switchCamera()"
+    >
+        🔄 Switch Camera
+    </button>
+
+    <!-- <button onclick="testCamera()" class="predict-btn">
+        🧪 Test Prediction
+    </button> -->
+
+    <p id="loading" class="loading-text" style="display:none;">
+    🧠 AI is analyzing the leaf image...
+    </p>
+
+    <br><br>
+
+    <img id="result-img" style="display:none;">
+    
+    <div id="result-box" class="result" style="display:none;">
+        <div id="result-text"></div>
+    </div>
+
+</div>
+
+</div> <!-- predict-page wrapper -->
+
+<script>
+
+let stream = null;
+let currentFacingMode = "environment";
+
+/* =========================
+   INIT
+========================= */
+window.addEventListener("DOMContentLoaded", function () {
+
+    const fileInput = document.getElementById("file-input");
+    const predictBtn = document.getElementById("predict-btn");
+
+    if (fileInput && predictBtn) {
+        fileInput.addEventListener("change", function() {
+            if (fileInput.files.length > 0) {
+                predictBtn.disabled = false;
+            }
+        });
+    }
+
+    switchTab('upload', true);
+});
+
+
+
+
+/* =========================
+   CAMERA START
+========================= */
+function startCamera() {
+
+    const video = document.getElementById("video");
+    const status = document.getElementById("cam-status");
+
+    if (!video) return;
+
+    navigator.mediaDevices.getUserMedia({
+        video: {
+            facingMode: currentFacingMode
+        }
+    })
+    .then(s => {
+
+        stream = s;
+        video.srcObject = stream;
+
+        // 🔥 IMPORTANT FIX
+        video.onloadedmetadata = () => {
+            video.play();
+        };
+
+        video.style.display = "block";
+
+        status.innerText = "📷 Camera Active";
+        status.style.color = "green";
+    })
+    .catch(err => {
+        status.innerText = "❌ Camera access denied";
+        status.style.color = "red";
+        console.error(err);
+    });
+}
+
+/* =========================
+   SWITCH CAMERA
+========================= */
+function switchCamera() {
+
+    currentFacingMode =
+        currentFacingMode === "environment"
+        ? "user"
+        : "environment";
+
+    stopCamera();
+    startCamera();
+}
+
+
+/* =========================
+   CAMERA STOP
+========================= */
+function stopCamera() {
+
+    const status = document.getElementById("cam-status");
+
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+    }
+
+    status.innerText = "🔴 Camera OFF";
+    status.style.color = "gray";
+}
+
+
+function getDiseaseType(name) {
+
+    const n = name.toLowerCase();
+
+    if (n.includes("virus") || n.includes("curl"))
+        return { type: "viral", label: "Viral" };
+
+    if (n.includes("bacterial"))
+        return { type: "bacterial", label: "Bacterial" };
+
+    if (
+        n.includes("blight") ||
+        n.includes("mold") ||
+        n.includes("rust") ||
+        n.includes("spot") ||
+        n.includes("scab") ||
+        n.includes("mildew") ||
+        n.includes("rot") ||
+        n.includes("esca") ||
+        n.includes("scorch")
+    )
+        return { type: "fungal", label: "Fungal" };
+
+    return { type: "unknown", label: "Unknown" };
+}
+
+
+/* =========================
+   CAPTURE IMAGE
+========================= */
+function capture() {
+
+    const video = document.getElementById("video");
+    const loading = document.getElementById("loading");
+
+    if (!stream || !video) return;
+
+    loading.style.display = "block";
+
+    const canvas = document.createElement('canvas');
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+
+    const imageData = canvas.toDataURL('image/jpeg');
+
+    fetch('/predict_camera', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({image: imageData})
+    })
+    .then(res => res.json())
+    .then(data => {
+
+        loading.style.display = "none";
+
+        const img = document.getElementById("result-img");
+        const box = document.getElementById("result-box");
+        const textEl = document.getElementById("result-text");
+
+        // =========================
+        // 🔴 INVALID IMAGE
+        // =========================
+        if (data.label === "invalid" || !data.image) {
+
+            img.style.display = "none";
+
+            box.style.display = "block";
+            textEl.innerHTML = `
+                ⚠️ <strong>Invalid Image</strong><br>
+                <span>Please capture a clear leaf image</span>
+            `;
+            return;
+        }
+
+        // =========================
+        // ✅ VALID IMAGE
+        // =========================
+        img.src = "data:image/jpeg;base64," + data.image;
+        img.style.display = "block";
+        box.style.display = "block";
+
+        const confValue = parseFloat(data.confidence);
+        const dtype = getDiseaseType(data.label);
+
+        // =========================
+        // 🌿 / 🦠 INFO BLOCK (FIXED)
+        // =========================
+        let infoHTML = "";
+
+        if (data.info && data.info.type === "healthy") {
+
+            infoHTML = `
+            <div class="info-card healthy">
+                <h3>🌿 Care Suggestions</h3>
+                <ul>
+                    ${data.info.suggestions.map(s => `<li>✔ ${s}</li>`).join("")}
+                </ul>
+            </div>
+            `;
+
+        } else if (data.info) {
+
+            infoHTML = `
+            <div class="info-card disease">
+                <h3>🩺 Symptoms</h3>
+                <ul>
+                    ${data.info.symptoms.map(s => `<li>${s}</li>`).join("")}
+                </ul>
+
+                <h3>💊 Remedies</h3>
+                <ul>
+                    ${data.info.remedies.map(r => `<li>✔ ${r}</li>`).join("")}
+                </ul>
+            </div>
+            `;
+        }
+
+        // =========================
+        // 🎯 FINAL UI
+        // =========================
+        let text = `
+        <div class="result-header">
+            <div class="result-title">
+                ${data.label}
+                <span class="badge ${dtype.type}">${dtype.label}</span>
+                <span class="badge severity ${data.severity.toLowerCase()}">
+                    ${data.severity}
+                </span>
+            </div>
+        </div>
+
+        <p class="confidence-text">📊 Confidence: ${data.confidence}</p>
+
+        <div class="confidence-box">
+            <div class="confidence-bar">
+                <div class="confidence-fill" style="width:${confValue}%"></div>
+            </div>
+        </div>
+
+        ${infoHTML}
+        `;
+
+        textEl.innerHTML = text;
+
+    })
+    .catch(() => {
+        loading.style.display = "none";
+        alert("Error processing image");
+    });
+}
+
+
+function testCamera() {
+
+    const dummy = {
+        label: "Tomato Late Blight",
+        confidence: "99.90%",
+        severity: "Medium (45.2%)",
+        symptoms: [
+            "Large dark lesions",
+            "White mold"
+        ],
+        remedies: [
+            "Remove infected plants",
+            "Apply fungicides"
+        ]
+    };
+
+    const confValue = parseFloat(dummy.confidence);
+
+    const dtype = getDiseaseType(dummy.label);
+
+    const html = `
+    <div class="result-header">
+        <div class="result-title">
+            ${dummy.label}
+            <span class="badge ${dtype.type}">${dtype.label}</span>
+            <span class="badge severity ${dummy.severity.toLowerCase()}">
+                ${dummy.severity}
+            </span>
+        </div>
+    </div>
+
+    <p class="confidence-text">📊 Confidence: ${dummy.confidence}</p>
+
+    <div class="confidence-box">
+        <div class="confidence-bar">
+            <div class="confidence-fill" style="width:${confValue}%"></div>
+        </div>
+    </div>
+
+    <div class="info-card disease">
+        <h3>🩺 Symptoms</h3>
+        <ul>
+            ${dummy.symptoms.map(s => `<li>${s}</li>`).join("")}
+        </ul>
+
+        <h3>💊 Remedies</h3>
+        <ul>
+            ${dummy.remedies.map(r => `<li>✔ ${r}</li>`).join("")}
+        </ul>
+    </div>
+    `;
+
+    const box = document.getElementById("result-box");
+    const textEl = document.getElementById("result-text");
+    const img = document.getElementById("result-img");
+
+    img.style.display = "none";   // no image in test
+    box.style.display = "block";
+
+    textEl.innerHTML = html;
+}
+
+/* =========================
+   TAB SWITCHING
+========================= */
+function switchTab(tab, isInit = false) {
+
+    const slider = document.getElementById("tab-slider");
+    const uploadBtn = document.getElementById("upload-tab");
+    const cameraBtn = document.getElementById("camera-tab");
+
+    const uploadSection = document.getElementById("upload-section");
+    const cameraSection = document.getElementById("camera-section");
+
+    // 🔥 ONLY CLEAR IF USER SWITCHES TAB (NOT INITIAL LOAD)
+    if (!isInit) {
+
+        // Upload reset
+        const preview = document.getElementById("upload-preview");
+        const fileInput = document.getElementById("file-input");
+        const predictBtn = document.getElementById("predict-btn");
+        const resultImg = document.getElementById("result-image");
+        const resultBox = document.querySelector(".result");
+
+        if (preview) {
+            preview.src = "";
+            preview.style.display = "none";
+        }
+
+        if (fileInput) fileInput.value = "";
+
+        if (predictBtn) predictBtn.disabled = true;
+
+        // ❗ DO NOT hide Flask results on init
+        if (resultImg) resultImg.style.display = "none";
+        if (resultBox) resultBox.style.display = "none";
+
+        // Camera reset
+        const camImg = document.getElementById("result-img");
+        const camBox = document.getElementById("result-box");
+
+        if (camImg) {
+            camImg.src = "";
+            camImg.style.display = "none";
+        }
+
+        if (camBox) camBox.style.display = "none";
+    }
+
+    // =========================
+    // TAB SWITCH
+    // =========================
+    if (tab === "upload") {
+
+        slider.style.transform = "translateX(0%)";
+
+        uploadBtn.classList.add("active");
+        cameraBtn.classList.remove("active");
+
+        uploadSection.style.display = "block";
+        cameraSection.style.display = "none";
+
+        stopCamera();
+
+    } else {
+
+        slider.style.transform = "translateX(100%)";
+
+        cameraBtn.classList.add("active");
+        uploadBtn.classList.remove("active");
+
+        uploadSection.style.display = "none";
+        cameraSection.style.display = "block";
+
+        startCamera();
+    }
+}
+
+
+/* =========================
+   IMAGE PREVIEW
+========================= */
+function previewImage(event) {
+
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+
+    reader.onload = function () {
+        const img = document.getElementById("upload-preview");
+        img.src = reader.result;
+        img.style.display = "block";
+
+        const resultImg = document.getElementById("result-image");
+        if (resultImg) resultImg.style.display = "none";
+
+        const resultBox = document.querySelector(".result");
+        if (resultBox) resultBox.style.display = "none";
+    };
+
+    reader.readAsDataURL(file);
+}
+
+</script>
+
+
+<div class="project-footer">
+    <p>
+        Developed using Deep Learning, Grad-CAM, and HSV-based Severity Analysis
+    </p>
+</div>
+
+{% endblock %}

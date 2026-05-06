@@ -1,0 +1,155 @@
+{
+  "Apple___Apple_scab": {
+    "symptoms": ["Olive-green to dark brown spots on leaves","Velvety lesions on leaf surface","Leaves curl and fall early","Scabby lesions on fruit","Fruit deformation"],
+    "remedies": ["Apply fungicides like captan or myclobutanil","Remove fallen infected leaves","Prune trees for airflow","Avoid overhead irrigation","Use resistant varieties"]
+  },
+  "Apple___Black_rot": {
+    "symptoms": ["Purple spots turning brown","Rotting fruit with concentric rings","Black shriveled fruits","Cankers on branches","Leaf edge browning"],
+    "remedies": ["Prune infected branches","Remove mummified fruits","Apply fungicides","Keep orchard clean","Improve sunlight exposure"]
+  },
+  "Apple___Cedar_apple_rust": {
+    "symptoms": ["Bright orange spots on leaves","Yellow halos around spots","Leaf drop","Reduced fruit quality"],
+    "remedies": ["Remove nearby cedar trees","Apply fungicides like mancozeb","Plant resistant varieties","Maintain airflow"]
+  },
+  "Apple___healthy": {
+    "suggestions": ["Maintain proper irrigation schedule","Apply balanced fertilizers","Prune trees annually","Ensure full sunlight exposure","Inspect leaves regularly"]
+  },
+
+  "Blueberry___healthy": {
+    "suggestions": ["Maintain acidic soil","Proper irrigation","Sunlight exposure"]
+  },
+
+  "Cherry_(including_sour)___Powdery_mildew": {
+    "symptoms": ["White powder on leaves","Leaf curling","Reduced growth"],
+    "remedies": ["Apply fungicides","Improve airflow","Avoid humidity"]
+  },
+  "Cherry_(including_sour)___healthy": {
+    "suggestions": ["Regular pruning","Proper watering","Monitor pests"]
+  },
+
+  "Corn_(maize)___Cercospora_leaf_spot Gray_leaf_spot": {
+    "symptoms": ["Gray rectangular spots","Leaf drying"],
+    "remedies": ["Use resistant seeds","Apply fungicide","Crop rotation"]
+  },
+  "Corn_(maize)___Common_rust_": {
+    "symptoms": ["Reddish-brown pustules on leaves","Leaf yellowing"],
+    "remedies": ["Use resistant hybrids","Apply fungicides"]
+  },
+  "Corn_(maize)___Northern_Leaf_Blight": {
+    "symptoms": ["Long gray lesions","Leaf drying"],
+    "remedies": ["Crop rotation","Apply fungicides"]
+  },
+  "Corn_(maize)___healthy": {
+    "suggestions": ["Maintain soil fertility","Ensure proper irrigation"]
+  },
+
+  "Grape___Black_rot": {
+    "symptoms": ["Brown leaf spots","Fruit rot"],
+    "remedies": ["Remove infected leaves","Apply fungicides"]
+  },
+  "Grape___Esca_(Black_Measles)": {
+    "symptoms": ["Dark spots","Leaf discoloration"],
+    "remedies": ["Prune infected vines","Improve hygiene"]
+  },
+  "Grape___Leaf_blight_(Isariopsis_Leaf_Spot)": {
+    "symptoms": ["Brown lesions","Leaf drop"],
+    "remedies": ["Apply fungicides","Improve airflow"]
+  },
+  "Grape___healthy": {
+    "suggestions": ["Proper pruning","Adequate sunlight"]
+  },
+
+  "Orange___Haunglongbing_(Citrus_greening)": {
+    "symptoms": ["Yellowing leaves","Misshapen fruits"],
+    "remedies": ["Control insects","Remove infected plants"]
+  },
+
+  "Peach___Bacterial_spot": {
+    "symptoms": ["Dark spots on leaves","Fruit lesions"],
+    "remedies": ["Use bactericide","Remove infected parts"]
+  },
+  "Peach___healthy": {
+    "suggestions": ["Proper watering","Sunlight exposure"]
+  },
+
+  "Pepper__bell___Bacterial_spot": {
+    "symptoms": ["Water-soaked spots","Leaf drop"],
+    "remedies": ["Use bactericide","Avoid wet leaves"]
+  },
+  "Pepper__bell___healthy": {
+    "suggestions": ["Balanced fertilization","Monitor pests"]
+  },
+
+  "Potato___Early_blight": {
+    "symptoms": ["Brown spots with concentric rings","Yellowing around lesions"],
+    "remedies": ["Remove infected leaves","Apply fungicides"]
+  },
+  "Potato___Late_blight": {
+    "symptoms": ["Dark water-soaked spots","White fungal growth"],
+    "remedies": ["Use certified seeds","Apply fungicides"]
+  },
+  "Potato___healthy": {
+    "suggestions": ["Maintain irrigation","Balanced fertilizers"]
+  },
+
+  "Raspberry___healthy": {
+    "suggestions": ["Proper pruning","Good drainage"]
+  },
+
+  "Soybean___healthy": {
+    "suggestions": ["Maintain soil nutrients","Monitor pests"]
+  },
+
+  "Squash___Powdery_mildew": {
+    "symptoms": ["White powder","Leaf drying"],
+    "remedies": ["Apply fungicides","Reduce humidity"]
+  },
+
+  "Strawberry___Leaf_scorch": {
+    "symptoms": ["Small dark purple spots","Burnt leaf appearance"],
+    "remedies": ["Remove infected leaves","Improve airflow"]
+  },
+  "Strawberry___healthy": {
+    "suggestions": ["Proper watering","Sunlight exposure"]
+  },
+
+  "Tomato_Bacterial_spot": {
+    "symptoms": ["Dark spots","Leaf drop"],
+    "remedies": ["Use bactericide","Remove infected plants"]
+  },
+  "Tomato_Early_blight": {
+    "symptoms": ["Brown concentric spots","Yellow halo"],
+    "remedies": ["Apply fungicides","Crop rotation"]
+  },
+  "Tomato_Late_blight": {
+    "symptoms": ["Large dark lesions","White mold"],
+    "remedies": ["Remove infected plants","Apply fungicides"]
+  },
+  "Tomato_Leaf_Mold": {
+    "symptoms": ["Yellow patches","Green mold"],
+    "remedies": ["Reduce humidity","Improve airflow"]
+  },
+  "Tomato_Septoria_leaf_spot": {
+    "symptoms": ["Small spots","Leaf drop"],
+    "remedies": ["Apply fungicides","Remove infected leaves"]
+  },
+  "Tomato_Spider_mites_Two_spotted_spider_mite": {
+    "symptoms": ["Yellow specks","Webbing"],
+    "remedies": ["Neem oil","Spray water"]
+  },
+  "Tomato__Target_Spot": {
+    "symptoms": ["Dark circular spots"],
+    "remedies": ["Apply fungicides"]
+  },
+  "Tomato__Tomato_YellowLeaf__Curl_Virus": {
+    "symptoms": ["Yellowing","Leaf curl"],
+    "remedies": ["Control whiteflies","Remove infected plants"]
+  },
+  "Tomato__Tomato_mosaic_virus": {
+    "symptoms": ["Mosaic pattern","Distorted leaves"],
+    "remedies": ["Remove infected plants","Disinfect tools"]
+  },
+  "Tomato_healthy": {
+    "suggestions": ["Proper watering","Full sunlight","Balanced fertilizer"]
+  }
+}

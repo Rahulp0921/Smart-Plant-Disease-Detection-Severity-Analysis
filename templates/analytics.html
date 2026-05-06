@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<div class="analytics-page">
+
+    <h2 class="analytics-title">📊 Analytics Dashboard</h2>
+
+    <!-- SUMMARY -->
+    <div class="summary-card">
+        <p>🔥 Best Accuracy: {{ history.val_accuracy[-1] }}</p>
+        <p>📉 Lowest Loss: {{ history.val_loss[-1] }}</p>
+    </div>
+
+    <!-- 🔥 PIE (FULL WIDTH) -->
+    <div class="chart-card full-width" onclick="expandPie()">
+        <h3>🍰 Crop Distribution</h3>
+        <canvas id="pieChart"></canvas>
+        <p class="zoom-hint">🔍 Click to expand</p>
+    </div>
+
+    <!-- 🔥 ACC + LOSS -->
+    <div class="analytics-row">
+
+        <div class="chart-card" onclick="expandAccuracy()">
+            <h3>📈 Model Accuracy</h3>
+            <canvas id="accuracyChart"></canvas>
+            <p class="zoom-hint">🔍 Click to expand</p>
+        </div>
+
+        <div class="chart-card" onclick="expandLoss()">
+            <h3>📉 Model Loss</h3>
+            <canvas id="lossChart"></canvas>
+            <p class="zoom-hint">🔍 Click to expand</p>
+        </div>
+
+    </div>
+
+    <!-- 🔥 CONFUSION MATRIX -->
+    <div class="confusion-matrix">
+        <h3>🧠 Confusion Matrix</h3>
+        <table>
+            <tr>
+                <th></th>
+                <th>Healthy</th>
+                <th>Disease</th>
+            </tr>
+            <tr>
+                <th>Healthy</th>
+                <td>50</td>
+                <td>3</td>
+            </tr>
+            <tr>
+                <th>Disease</th>
+                <td>4</td>
+                <td>60</td>
+            </tr>
+        </table>
+    </div>
+
+</div>
+
+<!-- ================= MODAL ================= -->
+<div id="chartModal" class="chart-modal">
+    <div class="chart-modal-content">
+        <span class="modal-close" onclick="closeChart()">✖</span>
+        <canvas id="modalChart"></canvas>
+    </div>
+</div>
+
+<!-- ================= SCRIPTS ================= -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<script>
+const pieData = {{ pie_data | tojson }};
+const history = {{ history | tojson }};
+
+function getColors() {
+    const styles = getComputedStyle(document.body);
+    return {
+        text: styles.getPropertyValue('--text'),
+        grid: "rgba(150,150,150,0.2)"
+    };
+}
+
+/* ================= PIE ================= */
+const pieConfig = {
+    type: "pie",
+    data: {
+        labels: pieData.labels,
+        datasets: [{
+            data: pieData.counts,
+            backgroundColor: ["#4CAF50","#2196F3","#FFC107","#FF5722","#9C27B0","#00BCD4"]
+        }]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: "bottom",
+                labels: { color: getColors().text }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        const data = context.dataset.data;
+                        const total = data.reduce((a, b) => a + b, 0);
+
+                        if (total === 0) return "No data";
+
+                        const value = context.raw;
+                        const percent = ((value / total) * 100).toFixed(1);
+
+                        return `${context.label}: ${percent}%`;
+                    }
+                }
+            }
+        }
+    }
+};
+
+const pieChart = new Chart(document.getElementById("pieChart"), pieConfig);
+
+/* ================= ACCURACY ================= */
+const accConfig = {
+    type: "line",
+    data: {
+        labels: history.accuracy.map((_, i) => `Epoch ${i+1}`),
+        datasets: [
+            {
+                label: "Train",
+                data: history.accuracy,
+                borderColor: "#4CAF50",
+                backgroundColor: "rgba(76,175,80,0.1)",
+                fill: true,
+                tension: 0.35
+            },
+            {
+                label: "Validation",
+                data: history.val_accuracy,
+                borderColor: "#2196F3",
+                backgroundColor: "rgba(33,150,243,0.1)",
+                fill: true,
+                tension: 0.35
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            x: { ticks: { color: getColors().text }, grid: { color: getColors().grid } },
+            y: { ticks: { color: getColors().text }, grid: { color: getColors().grid } }
+        },
+        plugins: {
+            legend: { labels: { color: getColors().text } }
+        }
+    }
+};
+
+const accChart = new Chart(document.getElementById("accuracyChart"), accConfig);
+
+/* ================= LOSS ================= */
+const lossConfig = {
+    type: "line",
+    data: {
+        labels: history.loss.map((_, i) => `Epoch ${i+1}`),
+        datasets: [
+            {
+                label: "Train Loss",
+                data: history.loss,
+                borderColor: "#FF5722",
+                backgroundColor: "rgba(255,87,34,0.1)",
+                fill: true,
+                tension: 0.35
+            },
+            {
+                label: "Validation Loss",
+                data: history.val_loss,
+                borderColor: "#FFC107",
+                backgroundColor: "rgba(255,193,7,0.1)",
+                fill: true,
+                tension: 0.35
+            }
+        ]
+    },
+    options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+            x: { ticks: { color: getColors().text }, grid: { color: getColors().grid } },
+            y: { ticks: { color: getColors().text }, grid: { color: getColors().grid } }
+        },
+        plugins: {
+            legend: { labels: { color: getColors().text } }
+        }
+    }
+};
+
+const lossChart = new Chart(document.getElementById("lossChart"), lossConfig);
+
+/* ================= MODAL ================= */
+let modalChart;
+
+function openChart(config) {
+    const modal = document.getElementById("chartModal");
+    modal.classList.add("active");
+
+    const ctx = document.getElementById("modalChart");
+
+    if (modalChart) modalChart.destroy();
+
+    modalChart = new Chart(ctx, config);
+}
+
+function closeChart() {
+    document.getElementById("chartModal").classList.remove("active");
+}
+
+/* ================= CLICK HANDLERS ================= */
+function expandPie() {
+    openChart(pieConfig);
+}
+
+function expandAccuracy() {
+    openChart(accConfig);
+}
+
+function expandLoss() {
+    openChart(lossConfig);
+}
+
+
+// 🔥 FIX DARK MODE TEXT ISSUE (SAFE)
+function updateChartColors() {
+    const colors = getColors();
+
+    // PIE
+    pieChart.options.plugins.legend.labels.color = colors.text;
+
+    // ACCURACY
+    accChart.options.plugins.legend.labels.color = colors.text;
+    accChart.options.scales.x.ticks.color = colors.text;
+    accChart.options.scales.y.ticks.color = colors.text;
+
+    // LOSS
+    lossChart.options.plugins.legend.labels.color = colors.text;
+    lossChart.options.scales.x.ticks.color = colors.text;
+    lossChart.options.scales.y.ticks.color = colors.text;
+
+    pieChart.update();
+    accChart.update();
+    lossChart.update();
+}
+
+// detect theme change
+const observer = new MutationObserver(() => {
+    updateChartColors();
+});
+
+observer.observe(document.body, { attributes: true });
+</script>
+
+{% endblock %}

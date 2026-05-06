@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Plant Doctor</title>
+
+    <!-- ✅ RESPONSIVE FIX (VERY IMPORTANT) -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<!-- =========================
+     SIDEBAR (OVERLAY)
+========================= -->
+<div class="sidebar" id="sidebar">
+
+    <h2 id="logo">🌿 Plant AI</h2>
+
+    <a href="/" class="nav-item {% if request.path == '/' %}active{% endif %}">
+        🔍 <span>Prediction</span>
+    </a>
+
+    <a href="/crops" class="nav-item {% if request.path == '/crops' %}active{% endif %}">
+        🌱 <span>Crops</span>
+    </a>
+
+    <a href="/analytics" class="nav-item {% if request.path == '/analytics' %}active{% endif %}">
+        📊 <span>Analytics</span>
+    </a>
+
+</div>
+
+<!-- =========================
+     OVERLAY BACKDROP
+========================= -->
+<div id="overlay" onclick="toggleSidebar()"></div>
+
+<!-- =========================
+     TOPBAR
+========================= -->
+<div class="topbar">
+
+    <!-- LEFT: MENU BUTTON -->
+    <button class="menu-btn" onclick="toggleSidebar()">☰</button>
+
+    <!-- RIGHT: THEME TOGGLE -->
+    <div class="topbar-right">
+
+        <!-- 🔥 INFO (ADD THIS) -->
+        <div class="top-info">
+            <span id="weather">🌤 --°C</span>
+            <span id="datetime">Loading...</span>
+        </div>
+
+        <span class="theme-icon">🌞</span>
+
+        <label class="theme-switch">
+            <input type="checkbox" id="theme-toggle" onchange="toggleTheme()">
+            <span class="slider"></span>
+        </label>
+
+        <span class="theme-icon">🌙</span>
+
+    </div>
+
+</div>
+
+<!-- =========================
+     CONTENT
+========================= -->
+<div class="content">
+    {% block content %}{% endblock %}
+</div>
+
+<!-- =========================
+     SCRIPT
+========================= -->
+<script>
+
+/* =========================
+   SIDEBAR (OVERLAY)
+========================= */
+function toggleSidebar() {
+    const sidebar = document.getElementById("sidebar");
+    const overlay = document.getElementById("overlay");
+
+    sidebar.classList.toggle("open");
+    overlay.classList.toggle("show");
+}
+
+/* =========================
+   DARK MODE
+========================= */
+function toggleTheme() {
+    const checkbox = document.getElementById("theme-toggle");
+
+    if (checkbox.checked) {
+        document.body.classList.add("dark");
+        localStorage.setItem("theme", "dark");
+    } else {
+        document.body.classList.remove("dark");
+        localStorage.setItem("theme", "light");
+    }
+}
+
+/* =========================
+   LOAD SAVED THEME
+========================= */
+window.onload = function () {
+
+    const checkbox = document.getElementById("theme-toggle");
+    let theme = localStorage.getItem("theme");
+
+    // 🔥 DEFAULT TO LIGHT MODE IF NOT SET
+    if (!theme) {
+        theme = "light";
+        localStorage.setItem("theme", "light");
+    }
+
+    if (theme === "dark") {
+        document.body.classList.add("dark");
+        checkbox.checked = true;
+    } else {
+        document.body.classList.remove("dark");
+        checkbox.checked = false;
+    }
+};
+
+
+// =========================
+// INIT AFTER DOM LOAD
+// =========================
+document.addEventListener("DOMContentLoaded", function () {
+
+    // 🕒 DATE & TIME
+    function updateTime() {
+        const el = document.getElementById("datetime");
+        if (!el) return;
+
+        const now = new Date();
+
+        const date = now.toLocaleDateString("en-IN", {
+            weekday: "short",
+            day: "numeric",
+            month: "short",
+            year: "numeric"
+        });
+
+        const time = now.toLocaleTimeString();
+
+        el.innerText = `${date} | ${time}`;
+    }
+
+    setInterval(updateTime, 1000);
+    updateTime();
+
+    // 📍 GET USER LOCATION
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const lat = pos.coords.latitude;
+                const lon = pos.coords.longitude;
+
+                getWeather(lat, lon);
+                getCity(lat, lon);
+            },
+            () => {
+                // ❌ Permission denied → fallback
+                getWeather(28.61, 77.23); // Delhi fallback
+            }
+        );
+    } else {
+        getWeather(28.61, 77.23);
+    }
+
+
+    // 🌦 WEATHER
+    // 🌦 LOCATION BASED WEATHER
+    async function getWeather(lat, lon) {
+    const el = document.getElementById("weather");
+    if (!el) return;
+
+    try {
+        const res = await fetch(
+            `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=b838a3f25e8edbddb8baa09a26730b8b&units=metric`
+        );
+
+        const data = await res.json();
+
+        if (!data || !data.main || !data.weather) {
+            el.innerText = "Weather unavailable";
+            return;
+        }
+
+        const temp = data.main.temp;
+        const condition = data.weather[0].main.toLowerCase();
+
+        // 🌧 Detect real rain
+        let icon = "☀";
+        let label = condition;
+
+        if (data.rain) {
+            icon = "🌧";
+            label = "Raining now";
+        } else if (condition.includes("cloud")) {
+            icon = "☁";
+            label = "Cloudy";
+        } else if (condition.includes("clear")) {
+            icon = "☀";
+            label = "Clear";
+        }
+
+        // 🌧 Optional: rain intensity
+        let rainText = "";
+        if (data.rain && data.rain["1h"]) {
+            rainText = ` (${data.rain["1h"]} mm)`;
+        }
+
+        el.innerText = `${icon} ${temp}°C • ${label}${rainText}`;
+
+    } catch (err) {
+        console.error(err);
+        el.innerText = "Weather unavailable";
+    }
+}
+
+    async function getCity(lat, lon) {
+        try {
+            const res = await fetch(
+                `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`
+            );
+            const data = await res.json();
+
+            const city = data.address.city || data.address.town || data.address.village;
+
+            const el = document.getElementById("weather");
+            if (city) {
+                el.innerText = el.innerText + ` • ${city}`;
+            }
+        } catch {}
+    }
+
+    getWeather();
+    getCity();
+
+});
+
+</script>
+
+</body>
+</html>

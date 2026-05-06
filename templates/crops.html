@@ -1,0 +1,277 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<h1>🌱 Crop Explorer</h1>
+
+<input type="text" id="crop-search" placeholder="🔍 Search crops..." onkeyup="filterCrops()">
+
+<div class="grid">
+
+    {% for crop, info in crops.items() %}
+    <div class="crop-card" id="card-{{ crop }}" onclick="showDetails('{{ crop }}')">
+
+        <img src="{{ url_for('static', filename='crops/' + crop.lower() + '.png') }}">
+
+        <!-- Hidden text (shown on hover) -->
+        <div class="crop-name">{{ crop.replace('_',' ') }}</div>
+
+    </div>
+    {% endfor %}
+
+</div>
+
+<!-- DETAILS PANEL -->
+<!-- FLOATING DETAILS PANEL -->
+<div id="details" class="details-popup">
+
+    <div class="details-content">
+
+        <!-- 🔥 STICKY HEADER -->
+        <div class="details-header">
+            <span class="close-btn" onclick="closeDetails()">✖</span>
+            <h2 id="crop-title"></h2>
+        </div>
+
+        <!-- 🔥 SCROLL AREA -->
+        <div class="details-body">
+
+            <div class="details-grid">
+                <p>🌡 <span id="temp"></span></p>
+                <p>💧 <span id="humidity"></span></p>
+                <p>🌱 <span id="soil"></span></p>
+                <p>⚗ <span id="ph"></span></p>
+                <p>💦 <span id="water"></span></p>
+                <p>☀ <span id="sunlight"></span></p>
+                <p>📅 <span id="season"></span></p>
+            </div>
+
+            <!-- 🔥 ADD THESE (MISSING IN YOUR FILE) -->
+            <div id="disease-list"></div>
+            <div id="disease-detail"></div>
+
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+const cropData = {{ crops | tojson }};
+const classes = {{ raw_class_names | tojson }};
+const diseaseData = {{ disease_data | tojson }};
+
+function showDetails(crop) {
+
+    // 🔥 CLEAR OLD DISEASE DETAILS
+    const diseaseDetail = document.getElementById("disease-detail");
+    if (diseaseDetail) diseaseDetail.innerHTML = "";
+
+    const diseaseListBox = document.getElementById("disease-list");
+    if (diseaseListBox) diseaseListBox.innerHTML = "";
+
+    // highlight tile
+    document.querySelectorAll(".crop-card").forEach(c => c.classList.remove("active"));
+    document.getElementById("card-" + crop).classList.add("active");
+
+    const d = cropData[crop];
+
+    document.getElementById("crop-title").innerText = crop;
+
+    document.getElementById("temp").innerText = d.temp;
+    document.getElementById("humidity").innerText = d.humidity;
+    document.getElementById("soil").innerText = d.soil;
+    document.getElementById("ph").innerText = d.ph;
+    document.getElementById("water").innerText = d.water;
+    document.getElementById("sunlight").innerText = d.sunlight;
+    document.getElementById("season").innerText = d.season;
+
+
+    // =========================
+    // 🌿 SHOW DISEASES
+    // =========================
+    const diseaseList = classes.filter(c => 
+        c.startsWith(crop) && !c.toLowerCase().includes("healthy")
+    );
+
+    let html = "<h3>🦠 Diseases</h3><ul>";
+
+    diseaseList.forEach(d => {
+
+        let name = d
+            .replace(crop + "___", "")
+            .replace(crop + "_", "")
+            .replaceAll("_", " ")
+            .trim()
+            .toLowerCase()
+            .replace(/\b\w/g, c => c.toUpperCase());
+
+        html += `<li onclick="showDisease('${d}', this)">${name}</li>`;
+    });
+
+    if (diseaseList.length === 0) {
+        html += "<li>No diseases available</li>";
+    }
+
+    html += "</ul>";
+
+    // create or update container
+    let existing = document.getElementById("disease-list");
+
+    if (!existing) {
+        const div = document.createElement("div");
+        div.id = "disease-list";
+        document.querySelector(".details-body").appendChild(div);
+    }
+
+    existing = document.getElementById("disease-list");
+    existing.innerHTML = html;
+
+    // SHOW POPUP (no scroll)
+    document.getElementById("details").classList.add("show");
+}
+
+
+function filterCrops() {
+    const input = document.getElementById("crop-search").value.toLowerCase();
+    const cards = document.querySelectorAll(".crop-card");
+
+    cards.forEach(card => {
+        const name = card.innerText.toLowerCase();
+        card.style.display = name.includes(input) ? "block" : "none";
+    });
+}
+
+function showDisease(diseaseKey) {
+
+    const info = diseaseData[diseaseKey];
+    if (!info) return;
+
+    let title = diseaseKey
+        .replaceAll("_", " ")
+        .toLowerCase()
+        .replace(/\b\w/g, ch => ch.toUpperCase());
+
+    const rawType = getDiseaseType(title);     
+    const cleanType = rawType.split(" ")[1] || "unknown";  
+
+    let html = `
+    <h3>
+        ${title}
+        <span class="badge ${cleanType}">${rawType}</span>
+    </h3>
+    `;
+
+    // HEALTHY
+    if (diseaseKey.toLowerCase().includes("healthy")) {
+
+        html += "<h4>🌿 Suggestions</h4><ul>";
+        info.suggestions.forEach(s => {
+            html += `<li>${s}</li>`;
+        });
+        html += "</ul>";
+
+    } else {
+
+        html += "<h4>🩺 Symptoms</h4><ul>";
+        info.symptoms.forEach(s => {
+            html += `<li>${s}</li>`;
+        });
+        html += "</ul>";
+
+        html += "<h4>💊 Remedies</h4><ul>";
+        info.remedies.forEach(r => {
+            html += `<li>${r}</li>`;
+        });
+        html += "</ul>";
+    }
+
+    // inject below crop info
+    let existing = document.getElementById("disease-detail");
+
+    if (!existing) {
+        const div = document.createElement("div");
+        div.id = "disease-detail";
+        document.querySelector(".details-body").appendChild(div);
+    }
+
+    document.getElementById("disease-detail").innerHTML = html;
+
+    // 🔥 AUTO SCROLL TO DETAILS
+    const container = document.querySelector(".details-content");
+    const target = document.getElementById("disease-detail");
+
+    container.scrollTo({
+        top: target.offsetTop - 10,
+        behavior: "smooth"
+    });
+}
+
+function getDiseaseType(name) {
+
+    const n = name.toLowerCase();
+
+    // 🦠 VIRAL
+    if (
+        n.includes("virus") ||
+        n.includes("yellowleaf") ||
+        n.includes("curl")
+    ) return "🦠 viral";
+
+    // 🧫 BACTERIAL
+    if (
+        n.includes("bacterial") ||
+        n.includes("canker")
+    ) return "🧫 bacterial";
+
+    // 🕷 PEST
+    if (
+        n.includes("mite") ||
+        n.includes("insect")
+    ) return "🕷 pest";
+
+    // 🍄 FUNGAL (EXPANDED)
+    if (
+        n.includes("mold") ||
+        n.includes("blight") ||
+        n.includes("rust") ||
+        n.includes("spot") ||
+        n.includes("scab") ||
+        n.includes("mildew") ||
+        n.includes("rot") ||
+        n.includes("esca") ||          // ✅ FIX
+        n.includes("scorch")           // ✅ FIX
+    ) return "🍄 fungal";
+
+    // 🦠 SPECIAL CASE (CITRUS GREENING)
+    if (n.includes("haunglongbing") || n.includes("greening"))
+        return "🦠 bacterial";   // actually bacterial disease
+
+    return "❓ unknown";
+}
+
+function closeDetails() {
+    document.getElementById("details").classList.remove("show");
+}
+
+document.addEventListener("click", function (e) {
+
+    const popup = document.getElementById("details");
+    const tiles = document.querySelector(".grid");
+
+    // if popup not open → do nothing
+    if (!popup.classList.contains("show")) return;
+
+    // clicked inside popup → ignore
+    if (popup.contains(e.target)) return;
+
+    // clicked on a tile → ignore
+    if (e.target.closest(".crop-card")) return;
+
+    // otherwise → close
+    closeDetails();
+});
+
+</script>
+
+{% endblock %}

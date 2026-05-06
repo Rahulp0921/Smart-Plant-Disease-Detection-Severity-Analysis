@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title></title>Smart Plant Disease Detection Severity Analysis</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+
+<body>
+
+<h1>Smart Plant Disease Detection Severity Analysis</h1>
+
+<div class="container">
+
+    <form method="POST" enctype="multipart/form-data">
+        <input type="file" name="file" required>
+        <button type="submit">Predict</button>
+    </form>
+
+    <hr>
+
+    <h2>📷 Live Camera Detection</h2>
+    
+    <video id="video"
+           autoplay
+           playsinline
+           width="100%"
+           class="preview">
+    </video>
+    
+    <br><br>
+    
+    <button type="button" onclick="startCamera()">
+        Start Camera
+    </button>
+    
+    <button type="button" onclick="switchCamera()">
+        🔄 Switch Camera
+    </button>
+    
+    <button type="button" onclick="captureImage()">
+        Capture & Predict
+    </button>
+    
+    <canvas id="canvas" style="display:none;"></canvas>
+
+    {% if image_path %}
+        <img src="{{ image_path }}" class="preview">
+    {% endif %}
+
+    {% if prediction %}
+        <div class="result">
+            <h2>{{ prediction }}</h2>
+            <p>Confidence: {{ confidence }}</p>
+        </div>
+    {% endif %}
+
+</div>
+
+<h2>📊 Training Loss</h2>
+<img src="/static/loss.png" class="graph">
+
+<script>
+
+let currentFacingMode = "environment";
+let currentStream = null;
+
+// =========================
+// START CAMERA
+// =========================
+async function startCamera() {
+
+    // Stop previous stream
+    if (currentStream) {
+        currentStream.getTracks().forEach(track => track.stop());
+    }
+
+    try {
+
+        currentStream =
+            await navigator.mediaDevices.getUserMedia({
+                video: {
+                    facingMode: currentFacingMode
+                }
+            });
+
+        const video =
+            document.getElementById("video");
+
+        video.srcObject = currentStream;
+
+    } catch (err) {
+
+        console.error(err);
+
+        alert("Unable to access camera");
+
+    }
+}
+
+// =========================
+// SWITCH CAMERA
+// =========================
+function switchCamera() {
+
+    currentFacingMode =
+        currentFacingMode === "environment"
+        ? "user"
+        : "environment";
+
+    startCamera();
+}
+
+// =========================
+// CAPTURE IMAGE
+// =========================
+function captureImage() {
+
+    const video =
+        document.getElementById("video");
+
+    const canvas =
+        document.getElementById("canvas");
+
+    const ctx =
+        canvas.getContext("2d");
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    ctx.drawImage(
+        video,
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+    // Convert to image
+    const imageData =
+        canvas.toDataURL("image/png");
+
+    console.log(imageData);
+
+    alert("Image captured successfully!");
+}
+
+// Auto start back camera
+startCamera();
+
+</script>
+
+</body>
+</html>
